@@ -1,0 +1,6 @@
+data
+results/
+trimmed_fastq/
+untrimmed_fastq
+*.csv
+.snakemake/
