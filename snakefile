@@ -1,6 +1,6 @@
+# Snakemake Pipeline for Variant calling
 
- # Snakemake Pipeline for Variant calling
-
+#trimming our reads 
 
 rule trim:
    output:
@@ -21,3 +21,60 @@ rule trim:
          MINLEN:25 \
          ILLUMINACLIP:untrimmed_fastq/NexteraPE-PE.fa:2:40:15
      """
+
+# quality control checks
+rule fastqc:
+   output:
+      html   = "qc/{sample}_fastqc.html",
+      zip    = "qc/{sample}_fastqc.zip"
+   input:
+      "trimmed_fastq/{sample}.trimmed.fastq"
+   shell:
+      """
+       fastqc -o qc {input}
+
+      """
+#Align reads to reference genome
+rule bwa_mem:
+   output:
+      "results/sam/{sample}.aligned.sam"
+   input:
+    ref="data/ecoli_rel606.fasta",
+    read1="trimmed_fastq_small/{sample}_1.trim.sub.fastq",
+    read2="trimmed_fastq_small/{sample}_2.trim.sub.fastq"
+   shell:
+     """
+        bwa mem {input.ref} \
+         {input.read1} {input.read2} > {output}
+     """
+#Convert to BAM file
+rule sam_view:
+    output: 
+       "results/bam/{sample}.aligned.bam"
+    input: 
+       "results/sam/{sample}.aligned.sam"
+    shell:
+       "samtools view -S -b {input} > {output}"
+
+
+#Sort BAM file samtool rule 
+
+rule sam_sort:
+   output:
+      "results/bam/{sample}.aligned.sorted.bam"
+   input:
+      "results/bam/{sample}.aligned.bam"
+   shell:
+      "samtools sort -o results/bam/SRR2584863.aligned.sorted.bam results/bam/SRR2584863.aligned.bam"
+
+
+#Calculate read coverage
+
+rule mpileup:
+   output: 
+     "results/bcf/{sample}_raw.bcf"
+   input: 
+     fasta = "data/ecoli_rel606.fasta",
+     bam   = "results/bam/{sample}.aligned.sorted.bam"
+   shell:
+     "/BIODATA/programs/bin/bcftools mpileup -O b -o {output} -f {input.fasta} {input.bam}"
