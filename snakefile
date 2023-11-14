@@ -65,7 +65,7 @@ rule sam_sort:
    input:
       "results/bam/{sample}.aligned.bam"
    shell:
-      "samtools sort -o results/bam/SRR2584863.aligned.sorted.bam results/bam/SRR2584863.aligned.bam"
+      "samtools sort -o {output} {input}"
 
 
 #Calculate read coverage
@@ -78,3 +78,25 @@ rule mpileup:
      bam   = "results/bam/{sample}.aligned.sorted.bam"
    shell:
      "/BIODATA/programs/bin/bcftools mpileup -O b -o {output} -f {input.fasta} {input.bam}"
+
+
+# detect SNVs
+
+rule bcftool:
+   output:
+      "results/vcf/{sample}_variants.vcf"
+   input:
+      "results/bcf/{sample}_raw.bcf"
+   shell: 
+      "bcftools call --ploidy 1 -m -v -o {output} {input}"
+
+
+#Filter SNVs
+
+rule Varient_filter:
+   output:
+      "results/vcf/{sample}_final_variants.vcf"
+   input:
+     "results/vcf/{sample}_variants.vcf"
+   shell:
+     "vcfutils.pl varFilter {input} > {output}"
